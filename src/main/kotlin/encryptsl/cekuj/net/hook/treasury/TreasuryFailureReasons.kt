@@ -1,12 +1,18 @@
 package encryptsl.cekuj.net.hook.treasury
 
-import me.lokka30.treasury.api.common.response.FailureReason
-
-enum class TreasuryFailureReasons(private val description: String) : FailureReason {
+enum class TreasuryFailureReasons(val description: String) {
 
     INVALID_VALUE("Invalid value inputted!"),
-    INVALID_CURRENCY("Invalid currency inputted!");
-    override fun getDescription(): String {
-        return description
+    INVALID_CURRENCY("Invalid currency inputted!"),
+    NEGATIVE_BALANCES_NOT_SUPPORTED("Negative balances are not supported!"),
+    FEATURE_NOT_SUPPORTED("Unsupported feature!"),
+    CURRENCY_NOT_FOUND("Currency not found!");
+
+    fun toException(): EconomyException {
+        return EconomyException(this)
+    }
+
+    fun toException(cause: Throwable): EconomyException {
+        return EconomyException(this, cause)
     }
 }

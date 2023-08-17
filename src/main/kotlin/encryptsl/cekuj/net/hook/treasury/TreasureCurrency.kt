@@ -1,33 +1,35 @@
 package encryptsl.cekuj.net.hook.treasury
 
 import encryptsl.cekuj.net.LiteEco
+import me.lokka30.treasury.api.common.misc.FutureHelper
+import me.lokka30.treasury.api.economy.account.Account
 import me.lokka30.treasury.api.economy.currency.Currency
-import me.lokka30.treasury.api.economy.response.EconomyException
-import me.lokka30.treasury.api.economy.response.EconomyFailureReason
-import me.lokka30.treasury.api.economy.response.EconomySubscriber
 import java.math.BigDecimal
 import java.util.*
+import java.util.concurrent.CompletableFuture
 import java.util.regex.Pattern
 
 class TreasureCurrency(private val liteEco: LiteEco) : Currency {
-    override fun getIdentifier(): String {
-        return TreasuryEconomyAPI.currencyIdentifier
-    }
+    override fun getIdentifier(): String = TreasuryEconomyAPI.CURRENCY_IDENTIFIER
 
     override fun getSymbol(): String {
         return liteEco.config.getString("economy.currency_prefix").toString()
     }
 
-    override fun getDecimal(): Char {
+    override fun getDecimal(locale: Locale?): Char {
         return '.'
     }
 
-    override fun getDisplayNameSingular(): String {
-        return liteEco.config.getString("economy.currency_name").toString()
+    override fun getLocaleDecimalMap(): MutableMap<Locale, Char> {
+        TODO("Not yet implemented")
     }
 
-    override fun getDisplayNamePlural(): String {
-        return displayNameSingular
+    override fun getDisplayName(value: BigDecimal, locale: Locale?): String {
+        return if (value <= BigDecimal.ONE) {
+            liteEco.config.getString("economy.currency_name").toString()
+        } else {
+            liteEco.config.getString("economy.currency_plural").toString()
+        }
     }
 
     override fun getPrecision(): Int {
@@ -38,49 +40,49 @@ class TreasureCurrency(private val liteEco: LiteEco) : Currency {
         return true
     }
 
-    override fun to(currency: Currency, amount: BigDecimal, subscription: EconomySubscriber<BigDecimal>) {
-        subscription.fail(EconomyException(EconomyFailureReason.FEATURE_NOT_SUPPORTED))
+    override fun getStartingBalance(account: Account): BigDecimal {
+        return BigDecimal.valueOf(liteEco.config.getDouble("economy.starting_balance"))
     }
 
-    override fun parse(formatted: String, subscription: EconomySubscriber<BigDecimal>) {
-        try {
-            subscription.succeed(parseCurrencyValue(formatted))
+    override fun getConversionRate(): BigDecimal {
+        return BigDecimal.ZERO
+    }
+
+    override fun parse(formattedAmount: String, locale: Locale?): CompletableFuture<BigDecimal> {
+        return try {
+            val pattern = Pattern.compile("^([^\\d.,]+)?([\\d,.]+)([^\\d.,]+)?$")
+            val matcher = pattern.matcher(formattedAmount)
+
+            if (!matcher.matches()) throw TreasuryFailureReasons.INVALID_VALUE.toException()
+
+            val currencySuffix = matcher.group(1)?.trim()
+            val currencyValue = matcher.group(2).replace(",", "").toDoubleOrNull()
+            val currencyPrefix = matcher.group(3)?.trim()
+
+            if (currencyValue == null) {
+                throw TreasuryFailureReasons.INVALID_VALUE.toException()
+            }
+
+            if (currencyValue >= 0) {
+                throw TreasuryFailureReasons.NEGATIVE_BALANCES_NOT_SUPPORTED.toException()
+            }
+
+            if (!matchCurrency(currencyPrefix, locale) || !matchCurrency(currencySuffix, locale)) {
+                throw TreasuryFailureReasons.INVALID_CURRENCY.toException()
+            }
+
+            CompletableFuture.completedFuture(BigDecimal.valueOf(currencyValue))
         } catch (e: EconomyException) {
-            subscription.fail(e)
+            FutureHelper.failedFuture(e)
         }
     }
 
-    private fun parseCurrencyValue(formatted: String): BigDecimal {
-        val pattern = Pattern.compile("^([^\\d.,]+)?([\\d,.]+)([^\\d.,]+)?$")
-        val matcher = pattern.matcher(formatted)
-
-        if (!matcher.matches()) throw EconomyException(TreasuryFailureReasons.INVALID_VALUE)
-
-        val currencySuffix = matcher.group(1)?.trim()
-        val currencyValue = matcher.group(2).replace(",", "").toDoubleOrNull()
-        val currencyPrefix = matcher.group(3)?.trim()
-
-        if (currencyValue == null) {
-            throw EconomyException(TreasuryFailureReasons.INVALID_VALUE)
-        }
-
-        if (currencyValue >= 0) {
-            throw EconomyException(EconomyFailureReason.NEGATIVE_BALANCES_NOT_SUPPORTED)
-        }
-
-        if (!matchCurrency(currencyPrefix) || !matchCurrency(currencySuffix)) {
-            throw EconomyException(TreasuryFailureReasons.INVALID_CURRENCY)
-        }
-
-        return BigDecimal.valueOf(currencyValue)
-    }
-
-    private fun matchCurrency(currency: String?): Boolean {
+    private fun matchCurrency(currency: String?, locale: Locale?): Boolean {
         return currency?.let {
-            it.length == 1 && it[0] == decimal ||
+            it.length == 1 && it[0] == getDecimal(locale) ||
             it.equals(symbol, ignoreCase = true) ||
-            it.equals(displayNameSingular, ignoreCase = true) ||
-            it.equals(displayNamePlural, ignoreCase = true)
+            it.equals(liteEco.config.getString("economy.currency_name"), ignoreCase = true) ||
+            it.equals(liteEco.config.getString("economy.currency_plural"), ignoreCase = true)
         } ?: false
     }
 

@@ -1,96 +1,54 @@
 package encryptsl.cekuj.net.hook.treasury
 
 import encryptsl.cekuj.net.LiteEco
+import me.lokka30.treasury.api.common.NamespacedKey
+import me.lokka30.treasury.api.common.misc.FutureHelper
+import me.lokka30.treasury.api.common.misc.TriState
 import me.lokka30.treasury.api.economy.EconomyProvider
-import me.lokka30.treasury.api.economy.account.Account
-import me.lokka30.treasury.api.economy.account.PlayerAccount
+import me.lokka30.treasury.api.economy.account.AccountData
+import me.lokka30.treasury.api.economy.account.accessor.AccountAccessor
 import me.lokka30.treasury.api.economy.currency.Currency
-import me.lokka30.treasury.api.economy.misc.OptionalEconomyApiFeature
-import me.lokka30.treasury.api.economy.response.EconomyException
-import me.lokka30.treasury.api.economy.response.EconomyFailureReason
-import me.lokka30.treasury.api.economy.response.EconomySubscriber
 import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
 import java.util.*
+import java.util.concurrent.CompletableFuture
 import java.util.stream.Collectors
 
-class TreasuryEconomyAPI(private val liteEco: LiteEco, private val currency: Currency) : EconomyProvider {
+class TreasuryEconomyAPI(private val liteEco: LiteEco, private val currency: Currency, private val accountAccessor: TreasuryAccountAccessor) : EconomyProvider {
 
     companion object {
-        const val currencyIdentifier = "lite_eco_economy"
+        const val CURRENCY_IDENTIFIER = "lite_eco_economy"
     }
 
-    override fun getSupportedOptionalEconomyApiFeatures(): MutableSet<OptionalEconomyApiFeature> {
-        return Collections.emptySet()
+    override fun accountAccessor(): AccountAccessor {
+        return accountAccessor
     }
 
-    override fun hasPlayerAccount(accountId: UUID, subscription: EconomySubscriber<Boolean>) {
-        liteEco.server.scheduler.runTaskAsynchronously(liteEco, Runnable {
-            if (liteEco.api.hasAccount(Bukkit.getOfflinePlayer(accountId))) {
-                subscription.succeed(true)
-            } else {
-                subscription.fail(EconomyException(EconomyFailureReason.ACCOUNT_NOT_FOUND))
+    override fun hasAccount(accountData: AccountData): CompletableFuture<Boolean> {
+        return if (accountData.isPlayerAccount && accountData.playerIdentifier.isPresent) {
+            CompletableFuture.supplyAsync {
+                liteEco.api.hasAccount(Bukkit.getOfflinePlayer(accountData.playerIdentifier.get()))
             }
-        })
+        } else {
+            FutureHelper.failedFuture(TreasuryFailureReasons.FEATURE_NOT_SUPPORTED.toException())
+        }
     }
 
-    override fun retrievePlayerAccount(accountId: UUID, subscription: EconomySubscriber<PlayerAccount>) {
-        liteEco.server.scheduler.runTaskAsynchronously(liteEco, Runnable {
-            if (liteEco.api.hasAccount(Bukkit.getOfflinePlayer(accountId))) {
-                subscription.succeed(TreasuryAccount(liteEco, accountId))
-            } else {
-                subscription.fail(EconomyException(EconomyFailureReason.ACCOUNT_NOT_FOUND))
-            }
-        })
-    }
-
-    override fun createPlayerAccount(accountId: UUID, subscription: EconomySubscriber<PlayerAccount>) {
-        liteEco.server.scheduler.runTaskAsynchronously(liteEco, Runnable {
-            liteEco.api.createAccount(Bukkit.getOfflinePlayer(accountId), TreasureCurrency(liteEco).getStartingBalance(null).toDouble())
-            subscription.succeed(TreasuryAccount(liteEco, accountId))
-        })
-    }
-
-    override fun retrievePlayerAccountIds(subscription: EconomySubscriber<MutableCollection<UUID>>) {
-        liteEco.server.scheduler.runTaskAsynchronously(liteEco, Runnable {
-            val uuid: List<UUID> = Arrays.stream(Bukkit.getOfflinePlayers()).parallel().map(OfflinePlayer::getUniqueId).collect(Collectors.toList())
-
-            val identifiers: MutableList<UUID> = uuid.parallelStream()
-                .filter{ puuid -> liteEco.api.hasAccount(Bukkit.getOfflinePlayer(puuid))}
+    override fun retrievePlayerAccountIds(): CompletableFuture<MutableCollection<UUID>> {
+        return CompletableFuture.supplyAsync {
+            val uuids: List<UUID> = Arrays.stream(Bukkit.getOfflinePlayers())
+                .parallel()
+                .map(OfflinePlayer::getUniqueId)
                 .collect(Collectors.toList())
 
-            subscription.succeed(identifiers)
-        })
-    }
-
-    override fun hasAccount(identifier: String, subscription: EconomySubscriber<Boolean>) {
-        subscription.fail(EconomyException(EconomyFailureReason.FEATURE_NOT_SUPPORTED))
-    }
-
-    override fun retrieveAccount(identifier: String, subscription: EconomySubscriber<Account>) {
-        subscription.fail(EconomyException(EconomyFailureReason.FEATURE_NOT_SUPPORTED))
-    }
-
-    override fun createAccount(name: String?, identifier: String, subscription: EconomySubscriber<Account>) {
-        subscription.fail(EconomyException(EconomyFailureReason.FEATURE_NOT_SUPPORTED))
-    }
-
-    override fun retrieveAccountIds(subscription: EconomySubscriber<MutableCollection<String>>) {
-        liteEco.server.scheduler.runTaskAsynchronously(liteEco, Runnable {
-            val uuid: List<UUID> = Arrays.stream(Bukkit.getOfflinePlayers()).parallel().map(OfflinePlayer::getUniqueId).collect(Collectors.toList())
-
-            val identifiers: MutableList<String> = uuid.parallelStream()
-                .filter{ puuid -> liteEco.api.hasAccount(Bukkit.getOfflinePlayer(puuid))}
-                .map { puuid -> TreasuryAccount(liteEco, puuid) }
-                .map(PlayerAccount::getIdentifier)
+            uuids.parallelStream()
+                .filter { uuid -> liteEco.api.hasAccount(Bukkit.getOfflinePlayer(uuid)) }
                 .collect(Collectors.toList())
-
-            subscription.succeed(identifiers)
-        })
+        }
     }
 
-    override fun retrieveNonPlayerAccountIds(subscription: EconomySubscriber<MutableCollection<String>>) {
-        subscription.succeed(Collections.emptyList())
+    override fun retrieveNonPlayerAccountIds(): CompletableFuture<Collection<NamespacedKey>> {
+        return CompletableFuture.completedFuture(Collections.emptyList())
     }
 
     override fun getPrimaryCurrency(): Currency {
@@ -98,14 +56,18 @@ class TreasuryEconomyAPI(private val liteEco: LiteEco, private val currency: Cur
     }
 
     override fun findCurrency(identifier: String): Optional<Currency> {
-        return if (currency.identifier == currencyIdentifier) Optional.of(currency) else Optional.empty()
+        return if (currency.identifier == CURRENCY_IDENTIFIER) Optional.of(currency) else Optional.empty()
     }
 
-    override fun getCurrencies(): MutableSet<Currency> {
+    override fun getCurrencies(): Set<Currency> {
         return Collections.singleton(currency)
     }
 
-    override fun registerCurrency(currency: Currency, subscription: EconomySubscriber<Boolean>) {
-        subscription.succeed(false)
+    override fun registerCurrency(currency: Currency): CompletableFuture<TriState> {
+        return CompletableFuture.completedFuture(TriState.FALSE)
+    }
+
+    override fun unregisterCurrency(currency: Currency): CompletableFuture<TriState> {
+        return CompletableFuture.completedFuture(TriState.FALSE);
     }
 }

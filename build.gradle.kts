@@ -34,7 +34,7 @@ kotlin {
 dependencies {
     paperweight.paperDevBundle(providers.gradleProperty("server_version").get())
     compileOnly(kotlin("stdlib", "1.8.20"))
-    compileOnly("me.lokka30:treasury-api:1.2.1")
+    compileOnly("me.lokka30:treasury-api:2.0.0")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
         exclude("org.bukkit", "bukkit")
     }
