@@ -11,6 +11,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 
 class AdminEconomyGlobalWithdrawListener(private val liteEco: LiteEco) : Listener {
+
     @EventHandler
     fun onAdminEconomyGlobalWithdraw(event: AdminEconomyGlobalWithdrawEvent) {
         val sender: CommandSender = event.commandSender

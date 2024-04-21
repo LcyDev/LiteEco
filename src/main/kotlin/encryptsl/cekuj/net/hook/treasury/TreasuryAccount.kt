@@ -13,9 +13,7 @@ import java.time.temporal.Temporal
 import java.util.*
 import java.util.concurrent.CompletableFuture
 
-
 class TreasuryAccount(private val liteEco: LiteEco, private val uuid: UUID) : PlayerAccount {
-
 
     override fun identifier(): UUID {
         return uuid

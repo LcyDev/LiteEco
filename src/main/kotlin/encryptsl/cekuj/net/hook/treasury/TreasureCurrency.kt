@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.regex.Pattern
 
 class TreasureCurrency(private val liteEco: LiteEco) : Currency {
+
     override fun getIdentifier(): String = TreasuryEconomyAPI.CURRENCY_IDENTIFIER
 
     override fun getSymbol(): String {
@@ -84,10 +85,6 @@ class TreasureCurrency(private val liteEco: LiteEco) : Currency {
             it.equals(liteEco.config.getString("economy.currency_name"), ignoreCase = true) ||
             it.equals(liteEco.config.getString("economy.currency_plural"), ignoreCase = true)
         } ?: false
-    }
-
-    override fun getStartingBalance(playerID: UUID?): BigDecimal {
-        return BigDecimal.valueOf(liteEco.config.getDouble("economy.starting_balance"))
     }
 
     override fun format(amount: BigDecimal, locale: Locale?): String {

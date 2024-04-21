@@ -42,6 +42,7 @@ class Locales(private val liteEco: LiteEco, private val langVersion: String) {
                     val backupFile = File(liteEco.dataFolder, "locale/old_$fileName")
                     file.copyTo(backupFile, true)
                     liteEco.saveResource("locale/$fileName", true)
+                    liteEco.logger.info("The locale $fileName was outdated. $existingVersion, latest is $langVersion.")
                 }
             }
             liteEco.config["plugin.translation"] = langKey.name

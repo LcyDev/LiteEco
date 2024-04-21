@@ -11,6 +11,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 
 class AdminEconomyGlobalSetListener(private val liteEco: LiteEco) : Listener {
+
     @EventHandler
     fun onAdminEconomyGlobalSet(event: AdminEconomyGlobalSetEvent) {
         val sender: CommandSender = event.commandSender

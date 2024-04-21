@@ -48,5 +48,4 @@ class AdminEconomyMoneyDepositListener(private val liteEco: LiteEco) : Listener 
             ))
         }
     }
-
 }

@@ -36,7 +36,7 @@ class ConfigAPI(private val liteEco: LiteEco) : ConfigAPIProvider {
                 liteEco.saveConfig()
                 liteEco.logger.info("Configuration config.yml was outdated [!]")
             } else {
-                liteEco.logger.info("Configuration config.yml is the latest [!]")
+                liteEco.logger.info("Configuration config.yml is up to date [!]")
             }
         }
         return this

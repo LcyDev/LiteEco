@@ -1,7 +1,8 @@
 package encryptsl.cekuj.net.hook.treasury
 
-class EconomyException(val failureReason: TreasuryFailureReasons) : RuntimeException(failureReason.description) {
+class EconomyException(failureReason: TreasuryFailureReasons) : RuntimeException(failureReason.description) {
 
-    constructor(failureReason: TreasuryFailureReasons, cause: Throwable) : super(failureReason.description, cause)
-
+    constructor(failureReason: TreasuryFailureReasons, cause: Throwable) : this(failureReason) {
+        initCause(cause)
+    }
 }

@@ -51,5 +51,4 @@ class AdminEconomyMoneySetListener(private val liteEco: LiteEco) : Listener {
             ))
         }
     }
-
 }

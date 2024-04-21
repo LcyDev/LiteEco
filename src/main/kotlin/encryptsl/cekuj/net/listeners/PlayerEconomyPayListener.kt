@@ -11,6 +11,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 
 class PlayerEconomyPayListener(private val liteEco: LiteEco) : Listener {
+
     @EventHandler
     fun onEconomyPay(event: PlayerEconomyPayEvent) {
         val sender: Player = event.sender

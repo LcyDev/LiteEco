@@ -68,6 +68,6 @@ class TreasuryEconomyAPI(private val liteEco: LiteEco, private val currency: Cur
     }
 
     override fun unregisterCurrency(currency: Currency): CompletableFuture<TriState> {
-        return CompletableFuture.completedFuture(TriState.FALSE);
+        return CompletableFuture.completedFuture(TriState.FALSE)
     }
 }

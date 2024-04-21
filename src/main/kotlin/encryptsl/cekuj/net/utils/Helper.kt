@@ -9,6 +9,7 @@ import encryptsl.cekuj.net.extensions.toValidDecimal
 import org.bukkit.command.CommandSender
 
 class Helper(private val liteEco: LiteEco) {
+
     fun validateAmount(amountStr: String, commandSender: CommandSender, checkLevel: CheckLevel = CheckLevel.FULL): Double? {
         val amount = amountStr.toValidDecimal()
         return when {

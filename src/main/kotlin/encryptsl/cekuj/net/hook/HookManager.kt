@@ -3,6 +3,7 @@ package encryptsl.cekuj.net.hook
 import encryptsl.cekuj.net.LiteEco
 import encryptsl.cekuj.net.hook.placeholderapi.EconomyPlaceholderAPI
 import encryptsl.cekuj.net.hook.treasury.TreasureCurrency
+import encryptsl.cekuj.net.hook.treasury.TreasuryAccountAccessor
 import encryptsl.cekuj.net.hook.treasury.TreasuryEconomyAPI
 import encryptsl.cekuj.net.hook.vault.AdaptiveEconomyVaultAPI
 import me.lokka30.treasury.api.common.service.ServiceRegistry
@@ -55,7 +56,7 @@ class HookManager(private val liteEco: LiteEco) {
 
     fun hookTreasury() {
         if (isPluginInstalled("Treasury")) {
-            ServiceRegistry.INSTANCE.registerService(EconomyProvider::class.java, TreasuryEconomyAPI(liteEco, TreasureCurrency(liteEco)), "LiteEco", me.lokka30.treasury.api.common.service.ServicePriority.HIGH)
+            ServiceRegistry.INSTANCE.registerService(EconomyProvider::class.java, TreasuryEconomyAPI(liteEco, TreasureCurrency(liteEco), TreasuryAccountAccessor(liteEco)), "LiteEco", me.lokka30.treasury.api.common.service.ServicePriority.HIGH)
             liteEco.logger.info("Registered Treasury like a service.")
         } else {
             liteEco.logger.info("Treasury not found, for better experience please download Treasury or Vault.")
